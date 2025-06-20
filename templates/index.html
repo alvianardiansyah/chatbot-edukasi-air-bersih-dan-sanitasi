@@ -1,0 +1,1174 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chatbot Air Bersih dan Sanitasi Indonesia</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.css"
+    />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        color: #333;
+      }
+
+      .header {
+        background: rgba(255, 255, 255, 0.95);
+        padding: 20px;
+        text-align: center;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        backdrop-filter: blur(10px);
+      }
+
+      .header h1 {
+        color: #2c3e50;
+        font-size: 2.5rem;
+        margin-bottom: 10px;
+      }
+
+      .main-container {
+        display: flex;
+        height: calc(100vh - 120px);
+        gap: 20px;
+        padding: 20px;
+        max-width: 1600px;
+        margin: 0 auto;
+      }
+
+      .chat-panel {
+        flex: 1;
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 15px;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        backdrop-filter: blur(10px);
+      }
+
+      .chat-header {
+        background: linear-gradient(135deg, #3498db, #2980b9);
+        color: white;
+        padding: 20px;
+        border-radius: 15px 15px 0 0;
+      }
+
+      .chat-header h2 {
+        font-size: 1.5rem;
+        margin-bottom: 5px;
+      }
+
+      .chat-messages {
+        flex: 1;
+        padding: 20px;
+        overflow-y: auto;
+        background: #f8f9fa;
+      }
+
+      .message {
+        margin-bottom: 15px;
+        display: flex;
+      }
+
+      .message.user {
+        justify-content: flex-end;
+      }
+
+      .message-bubble {
+        max-width: 70%;
+        padding: 12px 16px;
+        border-radius: 20px;
+        line-height: 1.4;
+      }
+
+      .message.bot .message-bubble {
+        background: #e3f2fd;
+        border: 1px solid #bbdefb;
+      }
+
+      .message.user .message-bubble {
+        background: #3498db;
+        color: white;
+      }
+
+      .chat-input {
+        padding: 20px;
+        background: white;
+        border-radius: 0 0 15px 15px;
+        border-top: 1px solid #eee;
+      }
+
+      .input-group {
+        display: flex;
+        gap: 10px;
+      }
+
+      .input-group input {
+        flex: 1;
+        padding: 12px 16px;
+        border: 2px solid #ddd;
+        border-radius: 25px;
+        font-size: 1rem;
+        outline: none;
+        transition: border-color 0.3s;
+      }
+
+      .input-group input:focus {
+        border-color: #3498db;
+      }
+
+      .send-btn {
+        background: #3498db;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 25px;
+        cursor: pointer;
+        font-weight: bold;
+        transition: background 0.3s;
+      }
+
+      .send-btn:hover {
+        background: #2980b9;
+      }
+
+      .send-btn:disabled {
+        background: #bdc3c7;
+        cursor: not-allowed;
+      }
+
+      .loading {
+        position: absolute;
+        bottom: 100px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(52, 152, 219, 0.9);
+        color: white;
+        padding: 10px 20px;
+        border-radius: 20px;
+        display: none;
+        z-index: 1000;
+      }
+
+      .loading.show {
+        display: block;
+      }
+
+      .map-panel {
+        flex: 1;
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 15px;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        backdrop-filter: blur(10px);
+      }
+
+      .map-header {
+        background: linear-gradient(135deg, #27ae60, #2ecc71);
+        color: white;
+        padding: 20px;
+        border-radius: 15px 15px 0 0;
+      }
+
+      .map-header h3 {
+        font-size: 1.3rem;
+        margin-bottom: 15px;
+      }
+
+      .map-filters {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .filter-btn {
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        padding: 8px 16px;
+        border-radius: 20px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        transition: all 0.3s;
+      }
+
+      .filter-btn:hover, .filter-btn.active {
+        background: white;
+        color: #27ae60;
+      }
+
+      #map {
+        flex: 1;
+        border-radius: 0 0 15px 15px;
+      }
+
+      @media (max-width: 768px) {
+        .main-container {
+          flex-direction: column;
+          height: auto;
+        }
+        
+        .chat-panel, .map-panel {
+          height: 400px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <h1>🌊 Chatbot Air Bersih dan Sanitasi Indonesia</h1>
+      <p style="text-align: center">
+        Dapatkan informasi tentang air bersih, sanitasi, dan kondisi krisis air
+        di seluruh Indonesia
+      </p>
+    </div>
+
+    <div class="main-container">
+      <div class="chat-panel">
+        <div class="chat-header">
+          <h2>💬 Asisten Virtual</h2>
+          <p>
+            Tanya saya tentang air bersih, sanitasi, atau kondisi krisis air di
+            Indonesia
+          </p>
+        </div>
+
+        <div class="chat-messages" id="chatMessages">
+          <div class="message bot">
+            <div class="message-bubble">
+              Halo! Saya adalah asisten virtual untuk informasi air bersih dan
+              sanitasi di Indonesia. Saya dapat membantu Anda dengan:
+              <br /><br />
+              🗺️ Informasi lokasi fasilitas air dan sanitasi<br />
+              💧 Edukasi tentang air bersih dan sanitasi<br />
+              🚨 Informasi daerah krisis banjir dan kekeringan<br />
+              📊 Data statistik provinsi<br /><br />
+              Silakan tanyakan apa saja!
+              <br /><br />
+              <h5 style="margin-bottom: 10px; color: #333; font-weight: 600">
+                📝 Contoh Pertanyaan:
+              </h5>
+              <ul
+                style="
+                  list-style-type: disc;
+                  padding-left: 20px;
+                  margin: 0;
+                  color: #444;
+                  font-size: 15px;
+                "
+              >
+                <li style="margin-bottom: 8px; line-height: 1.6">
+                  Daerah mana yang paling sering terjadi banjir?
+                </li>
+                <li style="margin-bottom: 8px; line-height: 1.6">
+                  Provinsi mana yang akses sanitasinya paling rendah?
+                </li>
+                <li style="margin-bottom: 8px; line-height: 1.6">
+                  Berapa rata-rata akses sanitasi di Indonesia?
+                </li>
+                <li style="margin-bottom: 8px; line-height: 1.6">
+                  Provinsi mana yang paling banyak perusahaan airnya?
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="chat-input">
+          <div class="input-group">
+            <input
+              type="text"
+              id="messageInput"
+              placeholder="Ketik pertanyaan Anda di sini..."
+              onkeypress="handleKeyPress(event)"
+            />
+            <button class="send-btn" id="sendButton" onclick="sendMessage()">
+              Kirim
+            </button>
+          </div>
+        </div>
+
+        <div class="loading" id="loadingIndicator">
+          <div>🤔 Sedang memroses pertanyaan Anda...</div>
+        </div>
+      </div>
+
+      <div class="map-panel">
+        <div class="map-header">
+          <h3>🗺️ Peta Indonesia - Data Air & Sanitasi</h3>
+          <div class="map-filters">
+            <button
+              class="filter-btn active"
+              onclick="showMapData('all')"
+              data-filter="all"
+            >
+              Semua Data
+            </button>
+            <button
+              class="filter-btn"
+              onclick="showMapData('sanitasi')"
+              data-filter="sanitasi"
+            >
+              Akses Sanitasi
+            </button>
+            <button
+              class="filter-btn"
+              onclick="showMapData('air')"
+              data-filter="air"
+            >
+              Perusahaan Air
+            </button>
+            <button
+              class="filter-btn"
+              onclick="showMapData('banjir')"
+              data-filter="banjir"
+            >
+              Kasus Banjir
+            </button>
+            <button
+              class="filter-btn"
+              onclick="showMapData('kekeringan')"
+              data-filter="kekeringan"
+            >
+              Kasus Kekeringan
+            </button>
+          </div>
+        </div>
+        <div id="map"></div>
+      </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.js"></script>
+    <script>
+      const provinsiData = {
+        Aceh: {
+          lat: 4.6951,
+          lng: 96.7494,
+          akses_sanitasi: 81.1,
+          jumlah_perusahaan_air: 21,
+          kasus_banjir: 1243,
+          kasus_kekeringan: 1,
+        },
+        "Sumatera Utara": {
+          lat: 2.1154,
+          lng: 99.5451,
+          akses_sanitasi: 85.73,
+          jumlah_perusahaan_air: 41,
+          kasus_banjir: 648,
+          kasus_kekeringan: 1,
+        },
+        "Sumatera Barat": {
+          lat: -0.7399,
+          lng: 100.8,
+          akses_sanitasi: 72.82,
+          jumlah_perusahaan_air: 8,
+          kasus_banjir: 522,
+          kasus_kekeringan: 1,
+        },
+        Riau: {
+          lat: 0.2933,
+          lng: 101.7068,
+          akses_sanitasi: 86.32,
+          jumlah_perusahaan_air: 26,
+          kasus_banjir: 639,
+          kasus_kekeringan: 0,
+        },
+        Jambi: {
+          lat: -1.4852,
+          lng: 102.4381,
+          akses_sanitasi: 83.97,
+          jumlah_perusahaan_air: 11,
+          kasus_banjir: 566,
+          kasus_kekeringan: 0,
+        },
+        "Sumatera Selatan": {
+          lat: -3.3194,
+          lng: 103.9144,
+          akses_sanitasi: 82.36,
+          jumlah_perusahaan_air: 18,
+          kasus_banjir: 452,
+          kasus_kekeringan: 0,
+        },
+        Bengkulu: {
+          lat: -3.5778,
+          lng: 102.3464,
+          akses_sanitasi: 83.01,
+          jumlah_perusahaan_air: 9,
+          kasus_banjir: 185,
+          kasus_kekeringan: 0,
+        },
+        Lampung: {
+          lat: -4.5586,
+          lng: 105.4068,
+          akses_sanitasi: 85.44,
+          jumlah_perusahaan_air: 8,
+          kasus_banjir: 314,
+          kasus_kekeringan: 1,
+        },
+        "Kepulauan Bangka Belitung": {
+          lat: -2.7411,
+          lng: 106.4406,
+          akses_sanitasi: 94.16,
+          jumlah_perusahaan_air: 7,
+          kasus_banjir: 44,
+          kasus_kekeringan: 0,
+        },
+        "Kepulauan Riau": {
+          lat: 3.9457,
+          lng: 108.1429,
+          akses_sanitasi: 91.23,
+          jumlah_perusahaan_air: 13,
+          kasus_banjir: 72,
+          kasus_kekeringan: 0,
+        },
+        "DKI Jakarta": {
+          lat: -6.2088,
+          lng: 106.8456,
+          akses_sanitasi: 94.01,
+          jumlah_perusahaan_air: 5,
+          kasus_banjir: 88,
+          kasus_kekeringan: 0,
+        },
+        "Jawa Barat": {
+          lat: -6.9039,
+          lng: 107.6186,
+          akses_sanitasi: 75.1,
+          jumlah_perusahaan_air: 2,
+          kasus_banjir: 701,
+          kasus_kekeringan: 10,
+        },
+        "Jawa Tengah": {
+          lat: -7.1509,
+          lng: 110.1403,
+          akses_sanitasi: 86.72,
+          jumlah_perusahaan_air: 42,
+          kasus_banjir: 829,
+          kasus_kekeringan: 8,
+        },
+        "DI Yogyakarta": {
+          lat: -7.8754,
+          lng: 110.4262,
+          akses_sanitasi: 96.71,
+          jumlah_perusahaan_air: 6,
+          kasus_banjir: 28,
+          kasus_kekeringan: 3,
+        },
+        "Jawa Timur": {
+          lat: -7.5361,
+          lng: 112.2384,
+          akses_sanitasi: 85.56,
+          jumlah_perusahaan_air: 38,
+          kasus_banjir: 732,
+          kasus_kekeringan: 12,
+        },
+        Banten: {
+          lat: -6.4058,
+          lng: 106.064,
+          akses_sanitasi: 87.93,
+          jumlah_perusahaan_air: 9,
+          kasus_banjir: 267,
+          kasus_kekeringan: 1,
+        },
+        Bali: {
+          lat: -8.4095,
+          lng: 115.1889,
+          akses_sanitasi: 96.83,
+          jumlah_perusahaan_air: 20,
+          kasus_banjir: 40,
+          kasus_kekeringan: 4,
+        },
+        "Nusa Tenggara Barat": {
+          lat: -8.6529,
+          lng: 117.3616,
+          akses_sanitasi: 86.8,
+          jumlah_perusahaan_air: 8,
+          kasus_banjir: 177,
+          kasus_kekeringan: 4,
+        },
+        "Nusa Tenggara Timur": {
+          lat: -9.6626,
+          lng: 120.2632,
+          akses_sanitasi: 77.66,
+          jumlah_perusahaan_air: 16,
+          kasus_banjir: 233,
+          kasus_kekeringan: 0,
+        },
+        "Kalimantan Barat": {
+          lat: 0.1322,
+          lng: 111.0969,
+          akses_sanitasi: 81.56,
+          jumlah_perusahaan_air: 28,
+          kasus_banjir: 922,
+          kasus_kekeringan: 0,
+        },
+        "Kalimantan Tengah": {
+          lat: -1.6815,
+          lng: 113.3824,
+          akses_sanitasi: 78.15,
+          jumlah_perusahaan_air: 14,
+          kasus_banjir: 609,
+          kasus_kekeringan: 0,
+        },
+        "Kalimantan Selatan": {
+          lat: -3.0926,
+          lng: 115.2838,
+          akses_sanitasi: 83.7,
+          jumlah_perusahaan_air: 2,
+          kasus_banjir: 520,
+          kasus_kekeringan: 0,
+        },
+        "Kalimantan Timur": {
+          lat: 0.5389,
+          lng: 116.4194,
+          akses_sanitasi: 91.65,
+          jumlah_perusahaan_air: 9,
+          kasus_banjir: 263,
+          kasus_kekeringan: 0,
+        },
+        "Kalimantan Utara": {
+          lat: 3.0731,
+          lng: 116.0414,
+          akses_sanitasi: 85.17,
+          jumlah_perusahaan_air: 5,
+          kasus_banjir: 138,
+          kasus_kekeringan: 0,
+        },
+        "Sulawesi Utara": {
+          lat: 1.4931,
+          lng: 124.8413,
+          akses_sanitasi: 87.31,
+          jumlah_perusahaan_air: 16,
+          kasus_banjir: 200,
+          kasus_kekeringan: 0,
+        },
+        "Sulawesi Tengah": {
+          lat: -1.43,
+          lng: 121.4456,
+          akses_sanitasi: 77.4,
+          jumlah_perusahaan_air: 21,
+          kasus_banjir: 346,
+          kasus_kekeringan: 0,
+        },
+        "Sulawesi Selatan": {
+          lat: -3.6688,
+          lng: 119.9741,
+          akses_sanitasi: 93.83,
+          jumlah_perusahaan_air: 24,
+          kasus_banjir: 484,
+          kasus_kekeringan: 7,
+        },
+        "Sulawesi Tenggara": {
+          lat: -4.1455,
+          lng: 122.1746,
+          akses_sanitasi: 90.62,
+          jumlah_perusahaan_air: 10,
+          kasus_banjir: 227,
+          kasus_kekeringan: 0,
+        },
+        Gorontalo: {
+          lat: 0.6999,
+          lng: 122.4467,
+          akses_sanitasi: 82.99,
+          jumlah_perusahaan_air: 6,
+          kasus_banjir: 130,
+          kasus_kekeringan: 1,
+        },
+        "Sulawesi Barat": {
+          lat: -2.844,
+          lng: 119.2321,
+          akses_sanitasi: 82.52,
+          jumlah_perusahaan_air: 5,
+          kasus_banjir: 135,
+          kasus_kekeringan: 0,
+        },
+        Maluku: {
+          lat: -3.2385,
+          lng: 130.1453,
+          akses_sanitasi: 80.51,
+          jumlah_perusahaan_air: 9,
+          kasus_banjir: 155,
+          kasus_kekeringan: 0,
+        },
+        "Maluku Utara": {
+          lat: 1.57,
+          lng: 127.8088,
+          akses_sanitasi: 82.32,
+          jumlah_perusahaan_air: 9,
+          kasus_banjir: 207,
+          kasus_kekeringan: 0,
+        },
+        "Papua Barat": {
+          lat: -1.3361,
+          lng: 133.1747,
+          akses_sanitasi: 79.0,
+          jumlah_perusahaan_air: 3,
+          kasus_banjir: 73,
+          kasus_kekeringan: 0,
+        },
+        "Papua Barat Daya": {
+          lat: -1.0564,
+          lng: 132.4382,
+          akses_sanitasi: 77.84,
+          jumlah_perusahaan_air: 2,
+          kasus_banjir: 56,
+          kasus_kekeringan: 0,
+        },
+        Papua: {
+          lat: -4.2699,
+          lng: 138.0804,
+          akses_sanitasi: 80.57,
+          jumlah_perusahaan_air: 6,
+          kasus_banjir: 76,
+          kasus_kekeringan: 0,
+        },
+        "Papua Selatan": {
+          lat: -7.5112,
+          lng: 139.897,
+          akses_sanitasi: 60.85,
+          jumlah_perusahaan_air: 2,
+          kasus_banjir: 50,
+          kasus_kekeringan: 0,
+        },
+        "Papua Tengah": {
+          lat: -3.9733,
+          lng: 137.4039,
+          akses_sanitasi: 41.44,
+          jumlah_perusahaan_air: 2,
+          kasus_banjir: 70,
+          kasus_kekeringan: 0,
+        },
+        "Papua Pegunungan": {
+          lat: -4.4696,
+          lng: 139.4805,
+          akses_sanitasi: 12.61,
+          jumlah_perusahaan_air: 2,
+          kasus_banjir: 86,
+          kasus_kekeringan: 0,
+        },
+      };
+
+      // Variabel peta
+      let map;
+      let markers = [];
+      let currentFilter = "all";
+
+      // Fungsi analisis data lokal
+      function analyzeLocalData(query) {
+        const lowerQuery = query.toLowerCase();
+        
+        // Analisis untuk pertanyaan tentang banjir
+        if (lowerQuery.includes('banjir')) {
+          if (lowerQuery.includes('paling sering') || lowerQuery.includes('tertinggi') || lowerQuery.includes('terbanyak')) {
+            const sortedByFlood = Object.entries(provinsiData)
+              .sort((a, b) => b[1].kasus_banjir - a[1].kasus_banjir)
+              .slice(0, 5);
+            
+            let response = "📊 **Provinsi dengan Kasus Banjir Tertinggi:**\n\n";
+            sortedByFlood.forEach((item, index) => {
+              response += `${index + 1}. **${item[0]}**: ${item[1].kasus_banjir} kasus\n`;
+            });
+            
+            response += `\n🏆 **${sortedByFlood[0][0]}** adalah provinsi dengan kasus banjir tertinggi yaitu **${sortedByFlood[0][1].kasus_banjir} kasus**.`;
+            
+            // Update peta
+            showMapData('banjir');
+            highlightProvince(sortedByFlood[0][0]);
+            
+            return response;
+          }
+          
+          if (lowerQuery.includes('terendah') || lowerQuery.includes('paling sedikit')) {
+            const sortedByFlood = Object.entries(provinsiData)
+              .filter(item => item[1].kasus_banjir > 0)
+              .sort((a, b) => a[1].kasus_banjir - b[1].kasus_banjir)
+              .slice(0, 5);
+            
+            let response = "📊 **Provinsi dengan Kasus Banjir Terendah:**\n\n";
+            sortedByFlood.forEach((item, index) => {
+              response += `${index + 1}. **${item[0]}**: ${item[1].kasus_banjir} kasus\n`;
+            });
+            
+            return response;
+          }
+          
+          if (lowerQuery.includes('rata-rata') || lowerQuery.includes('average')) {
+            const totalFlood = Object.values(provinsiData).reduce((sum, data) => sum + data.kasus_banjir, 0);
+            const avgFlood = (totalFlood / Object.keys(provinsiData).length).toFixed(2);
+            
+            return `📊 **Rata-rata kasus banjir** di seluruh Indonesia adalah **${avgFlood} kasus** per provinsi.\n\n📈 Total kasus banjir di seluruh Indonesia: **${totalFlood} kasus**`;
+          }
+        }
+        
+        // Analisis untuk pertanyaan tentang kekeringan
+        if (lowerQuery.includes('kekeringan')) {
+          if (lowerQuery.includes('paling sering') || lowerQuery.includes('tertinggi') || lowerQuery.includes('terbanyak')) {
+            const sortedByDrought = Object.entries(provinsiData)
+              .filter(item => item[1].kasus_kekeringan > 0)
+              .sort((a, b) => b[1].kasus_kekeringan - a[1].kasus_kekeringan)
+              .slice(0, 5);
+            
+            let response = "📊 **Provinsi dengan Kasus Kekeringan Tertinggi:**\n\n";
+            sortedByDrought.forEach((item, index) => {
+              response += `${index + 1}. **${item[0]}**: ${item[1].kasus_kekeringan} kasus\n`;
+            });
+            
+            if (sortedByDrought.length > 0) {
+              response += `\n🏆 **${sortedByDrought[0][0]}** adalah provinsi dengan kasus kekeringan tertinggi yaitu **${sortedByDrought[0][1].kasus_kekeringan} kasus**.`;
+              showMapData('kekeringan');
+              highlightProvince(sortedByDrought[0][0]);
+            }
+            
+            return response;
+          }
+        }
+        
+        // Analisis untuk pertanyaan tentang sanitasi
+        if (lowerQuery.includes('sanitasi')) {
+          if (lowerQuery.includes('terendah') || lowerQuery.includes('paling rendah') || lowerQuery.includes('terburuk')) {
+            const sortedBySanitation = Object.entries(provinsiData)
+              .sort((a, b) => a[1].akses_sanitasi - b[1].akses_sanitasi)
+              .slice(0, 5);
+            
+            let response = "📊 **Provinsi dengan Akses Sanitasi Terendah:**\n\n";
+            sortedBySanitation.forEach((item, index) => {
+              response += `${index + 1}. **${item[0]}**: ${item[1].akses_sanitasi}%\n`;
+            });
+            
+            response += `\n⚠️ **${sortedBySanitation[0][0]}** memiliki akses sanitasi terendah yaitu **${sortedBySanitation[0][1].akses_sanitasi}%**.`;
+            
+            showMapData('sanitasi');
+            highlightProvince(sortedBySanitation[0][0]);
+            
+            return response;
+          }
+          
+          if (lowerQuery.includes('rata-rata') || lowerQuery.includes('average')) {
+            const totalSanitation = Object.values(provinsiData).reduce((sum, data) => sum + data.akses_sanitasi, 0);
+            const avgSanitation = (totalSanitation / Object.keys(provinsiData).length).toFixed(2);
+            
+            return `📊 **Rata-rata akses sanitasi** di seluruh Indonesia adalah **${avgSanitation}%**.\n\n📈 Ini menunjukkan bahwa secara nasional, akses sanitasi di Indonesia sudah cukup baik.`;
+          }
+        }
+        
+        // Analisis untuk pertanyaan tentang perusahaan air/PDAM
+        if (lowerQuery.includes('perusahaan air') || lowerQuery.includes('pdam')) {
+          if (lowerQuery.includes('terbanyak') || lowerQuery.includes('tertinggi') || lowerQuery.includes('paling banyak')) {
+            const sortedByWaterCompany = Object.entries(provinsiData)
+              .sort((a, b) => b[1].jumlah_perusahaan_air - a[1].jumlah_perusahaan_air)
+              .slice(0, 5);
+            
+            let response = "📊 **Provinsi dengan Jumlah Perusahaan Air Terbanyak:**\n\n";
+            sortedByWaterCompany.forEach((item, index) => {
+              response += `${index + 1}. **${item[0]}**: ${item[1].jumlah_perusahaan_air} perusahaan\n`;
+            });
+            
+            response += `\n🏆 **${sortedByWaterCompany[0][0]}** memiliki jumlah perusahaan air terbanyak yaitu **${sortedByWaterCompany[0][1].jumlah_perusahaan_air} perusahaan**.`;
+            
+            showMapData('air');
+            highlightProvince(sortedByWaterCompany[0][0]);
+            
+            return response;
+          }
+          
+          if (lowerQuery.includes('paling sedikit') || lowerQuery.includes('terendah')) {
+            const sortedByWaterCompany = Object.entries(provinsiData)
+              .sort((a, b) => a[1].jumlah_perusahaan_air - b[1].jumlah_perusahaan_air)
+              .slice(0, 5);
+            
+            let response = "📊 **Provinsi dengan Jumlah Perusahaan Air Paling Sedikit:**\n\n";
+            sortedByWaterCompany.forEach((item, index) => {
+              response += `${index + 1}. **${item[0]}**: ${item[1].jumlah_perusahaan_air} perusahaan\n`;
+            });
+            
+            return response;
+          }
+        }
+        
+        // Analisis untuk pertanyaan umum tentang provinsi tertentu
+        const mentionedProvince = Object.keys(provinsiData).find(provinsi =>
+          lowerQuery.includes(provinsi.toLowerCase())
+        );
+        
+        if (mentionedProvince) {
+          const data = provinsiData[mentionedProvince];
+          let response = `📍 **Informasi ${mentionedProvince}:**\n\n`;
+          response += `🚿 **Akses Sanitasi**: ${data.akses_sanitasi}%\n`;
+          response += `🏢 **Perusahaan Air**: ${data.jumlah_perusahaan_air} perusahaan\n`;
+          response += `🌊 **Kasus Banjir**: ${data.kasus_banjir} kasus\n`;
+          response += `☀️ **Kasus Kekeringan**: ${data.kasus_kekeringan} kasus\n\n`;
+          
+          // Analisis kondisi
+          if (data.akses_sanitasi >= 90) {
+            response += "✅ Akses sanitasi sangat baik\n";
+          } else if (data.akses_sanitasi >= 80) {
+            response += "🔶 Akses sanitasi cukup baik\n";
+          } else {
+            response += "⚠️ Akses sanitasi perlu ditingkatkan\n";
+          }
+          
+          if (data.kasus_banjir > 500) {
+            response += "🚨 Daerah rawan banjir tinggi\n";
+          } else if (data.kasus_banjir > 100) {
+            response += "⚠️ Perlu waspada terhadap banjir\n";
+          }
+          
+          if (data.kasus_kekeringan > 5) {
+            response += "☀️ Daerah rawan kekeringan\n";
+          }
+          
+          highlightProvince(mentionedProvince);
+          return response;
+        }
+        
+        // Analisis komparatif
+        if (lowerQuery.includes('bandingkan') || lowerQuery.includes('perbandingan')) {
+          const provinces = Object.keys(provinsiData).filter(provinsi =>
+            lowerQuery.includes(provinsi.toLowerCase())
+          );
+          
+          if (provinces.length >= 2) {
+            let response = `📊 **Perbandingan Data:**\n\n`;
+            provinces.forEach(provinsi => {
+              const data = provinsiData[provinsi];
+              response += `**${provinsi}:**\n`;
+              response += `- Sanitasi: ${data.akses_sanitasi}%\n`;
+              response += `- Perusahaan Air: ${data.jumlah_perusahaan_air}\n`;
+              response += `- Banjir: ${data.kasus_banjir} kasus\n`;
+              response += `- Kekeringan: ${data.kasus_kekeringan} kasus\n\n`;
+            });
+            
+            return response;
+          }
+        }
+        
+        // Statistik umum
+        if (lowerQuery.includes('statistik') || lowerQuery.includes('data umum') || lowerQuery.includes('ringkasan')) {
+          const totalProvinces = Object.keys(provinsiData).length;
+          const totalSanitation = Object.values(provinsiData).reduce((sum, data) => sum + data.akses_sanitasi, 0);
+          const totalWaterCompanies = Object.values(provinsiData).reduce((sum, data) => sum + data.jumlah_perusahaan_air, 0);
+          const totalFlood = Object.values(provinsiData).reduce((sum, data) => sum + data.kasus_banjir, 0);
+          const totalDrought = Object.values(provinsiData).reduce((sum, data) => sum + data.kasus_kekeringan, 0);
+          
+          const avgSanitation = (totalSanitation / totalProvinces).toFixed(2);
+          const avgWaterCompanies = (totalWaterCompanies / totalProvinces).toFixed(0);
+          const avgFlood = (totalFlood / totalProvinces).toFixed(0);
+          
+          let response = `📊 **Statistik Nasional Air Bersih dan Sanitasi:**\n\n`;
+          response += `🏛️ **Total Provinsi**: ${totalProvinces}\n`;
+          response += `🚿 **Rata-rata Akses Sanitasi**: ${avgSanitation}%\n`;
+          response += `🏢 **Total Perusahaan Air**: ${totalWaterCompanies}\n`;
+          response += `📈 **Rata-rata Perusahaan Air per Provinsi**: ${avgWaterCompanies}\n`;
+          response += `🌊 **Total Kasus Banjir**: ${totalFlood}\n`;
+          response += `📊 **Rata-rata Kasus Banjir per Provinsi**: ${avgFlood}\n`;
+          response += `☀️ **Total Kasus Kekeringan**: ${totalDrought}\n\n`;
+          
+          response += `✨ **Insight**: Secara nasional, akses sanitasi Indonesia sudah mencapai ${avgSanitation}%, yang menunjukkan pencapaian yang cukup baik dalam target SDGs.`;
+          
+          return response;
+        }
+        
+        return null; // Tidak dapat dianalisis secara lokal
+      }
+
+      // Inisialisasi peta
+      function initMap() {
+        map = L.map("map").setView([-2.5, 118], 5);
+
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          attribution: "© OpenStreetMap contributors",
+        }).addTo(map);
+
+        showMapData("all");
+      }
+
+      // Fungsi untuk highlight provinsi tertentu
+      function highlightProvince(provinceName) {
+        const data = provinsiData[provinceName];
+        if (data) {
+          map.setView([data.lat, data.lng], 8);
+          
+          // Tambahkan marker khusus untuk highlight
+          setTimeout(() => {
+            const highlightMarker = L.marker([data.lat, data.lng], {
+              icon: L.divIcon({
+                className: "highlight-marker",
+                html: `<div style="background-color: #e74c3c; width: 30px; height: 30px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 8px rgba(231,76,60,0.6); animation: pulse 2s infinite;"></div>
+                       <style>
+                         @keyframes pulse {
+                           0% { transform: scale(1); opacity: 1; }
+                           50% { transform: scale(1.2); opacity: 0.7; }
+                           100% { transform: scale(1); opacity: 1; }
+                         }
+                       </style>`,
+                iconSize: [30, 30],
+                iconAnchor: [15, 15],
+              }),
+            }).addTo(map);
+            
+            // Hapus marker highlight setelah 5 detik
+            setTimeout(() => {
+              map.removeLayer(highlightMarker);
+            }, 5000);
+          }, 500);
+        }
+      }
+
+      // Tampilkan data di peta berdasarkan filter
+      function showMapData(filter) {
+        // Hapus marker yang ada
+        markers.forEach((marker) => map.removeLayer(marker));
+        markers = [];
+
+        // Update tombol filter aktif
+        document.querySelectorAll(".filter-btn").forEach((btn) => {
+          btn.classList.remove("active");
+        });
+        document
+          .querySelector(`[data-filter="${filter}"]`)
+          .classList.add("active");
+
+        currentFilter = filter;
+
+        // Tambahkan marker berdasarkan filter
+        Object.entries(provinsiData).forEach(([provinsi, data]) => {
+          let markerColor = getMarkerColor(filter, data);
+          let popupContent = getPopupContent(provinsi, data, filter);
+
+          if (shouldShowMarker(filter, data)) {
+            let marker = L.marker([data.lat, data.lng], {
+              icon: L.divIcon({
+                className: "custom-marker",
+                html: `<div style="background-color: ${markerColor}; width: 20px; height: 20px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>`,
+                iconSize: [20, 20],
+                iconAnchor: [10, 10],
+              }),
+            }).addTo(map);
+
+            marker.bindPopup(popupContent);
+            markers.push(marker);
+          }
+        });
+      }
+
+      // Fungsi helper untuk peta
+      function getMarkerColor(filter, data) {
+        switch (filter) {
+          case "sanitasi":
+            return data.akses_sanitasi >= 80
+              ? "#27ae60"
+              : data.akses_sanitasi >= 60
+              ? "#f39c12"
+              : "#e74c3c";
+          case "air":
+            return data.jumlah_perusahaan_air >= 20
+              ? "#3498db"
+              : data.jumlah_perusahaan_air >= 10
+              ? "#9b59b6"
+              : "#34495e";
+          case "banjir":
+            return data.kasus_banjir >= 500
+              ? "#e74c3c"
+              : data.kasus_banjir >= 100
+              ? "#f39c12"
+              : "#27ae60";
+          case "kekeringan":
+            return data.kasus_kekeringan >= 8
+              ? "#e67e22"
+              : data.kasus_kekeringan >= 4
+              ? "#f39c12"
+              : "#27ae60";
+          default:
+            return "#3498db";
+        }
+      }
+
+      function shouldShowMarker(filter, data) {
+        switch (filter) {
+          case "banjir":
+            return data.kasus_banjir > 0;
+          case "kekeringan":
+            return data.kasus_kekeringan > 0;
+          default:
+            return true;
+        }
+      }
+
+      function getPopupContent(provinsi, data, filter) {
+        let content = `<div style="min-width: 200px;"><h3 style="margin-bottom: 10px; color: #2c3e50;">${provinsi}</h3>`;
+
+        switch (filter) {
+          case "sanitasi":
+            content += `<p><strong>Akses Sanitasi:</strong> ${data.akses_sanitasi}%</p>`;
+            content += `<div style="background: #ecf0f1; height: 10px; border-radius: 5px; margin: 5px 0;">
+                        <div style="background: ${getMarkerColor(
+                          filter,
+                          data
+                        )}; height: 100%; width: ${
+              data.akses_sanitasi
+            }%; border-radius: 5px;"></div>
+                    </div>`;
+            break;
+          case "air":
+            content += `<p><strong>Jumlah Perusahaan Air:</strong> ${data.jumlah_perusahaan_air}</p>`;
+            break;
+          case "banjir":
+            content += `<p><strong>Kasus Banjir:</strong> ${data.kasus_banjir}</p>`;
+            content +=
+              data.kasus_banjir >= 500
+                ? '<p style="color: #e74c3c;">🚨 Daerah Rawan Banjir Tinggi</p>'
+                : data.kasus_banjir >= 100
+                ? '<p style="color: #f39c12;">⚠️ Daerah Rawan Banjir</p>'
+                : '<p style="color: #27ae60;">✅ Risiko Banjir Rendah</p>';
+            break;
+          case "kekeringan":
+            content += `<p><strong>Kasus Kekeringan:</strong> ${data.kasus_kekeringan}</p>`;
+            content +=
+              data.kasus_kekeringan >= 8
+                ? '<p style="color: #e67e22;">☀️ Daerah Rawan Kekeringan Tinggi</p>'
+                : data.kasus_kekeringan >= 4
+                ? '<p style="color: #f39c12;">⚠️ Daerah Rawan Kekeringan</p>'
+                : '<p style="color: #27ae60;">✅ Risiko Kekeringan Rendah</p>';
+            break;
+          default:
+            content += `<p><strong>Akses Sanitasi:</strong> ${data.akses_sanitasi}%</p>`;
+            content += `<p><strong>Perusahaan Air:</strong> ${data.jumlah_perusahaan_air}</p>`;
+            content += `<p><strong>Kasus Banjir:</strong> ${data.kasus_banjir}</p>`;
+            content += `<p><strong>Kasus Kekeringan:</strong> ${data.kasus_kekeringan}</p>`;
+        }
+
+        content += "</div>";
+        return content;
+      }
+
+      // Fungsi chat yang telah dimodifikasi
+      async function sendMessage() {
+        const input = document.getElementById("messageInput");
+        const message = input.value.trim();
+
+        if (!message) return;
+
+        // Tambahkan pesan pengguna
+        addMessage(message, "user");
+        input.value = "";
+
+        // Tampilkan loading
+        showLoading(true);
+        document.getElementById("sendButton").disabled = true;
+
+        try {
+          // Cek apakah pertanyaan dapat dijawab dengan analisis data lokal
+          const localAnalysis = analyzeLocalData(message);
+          
+          if (localAnalysis) {
+            // Jika dapat dianalisis secara lokal, gunakan hasil analisis
+            addMessage(localAnalysis, "bot");
+            updateMapForQuery(message);
+          } else {
+            // Jika tidak dapat dianalisis secara lokal, kirim ke backend Flask
+            const response = await fetch("/api/chat", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ message: message }),
+            });
+
+            const data = await response.json();
+
+            if (data.error) {
+              throw new Error(data.error);
+            }
+
+            addMessage(data.response, "bot");
+            updateMapForQuery(message);
+          }
+        } catch (error) {
+          console.error("Error:", error);
+          addMessage(
+            "Maaf, terjadi kesalahan saat memproses pertanyaan Anda. Silakan coba lagi.",
+            "bot"
+          );
+        } finally {
+          showLoading(false);
+          document.getElementById("sendButton").disabled = false;
+        }
+      }
+
+      function addMessage(message, sender) {
+        const messagesContainer = document.getElementById("chatMessages");
+        const messageDiv = document.createElement("div");
+        messageDiv.className = `message ${sender}`;
+        
+        // Format pesan dengan markdown sederhana
+        let formattedMessage = message
+          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+          .replace(/\n/g, "<br>");
+        
+        messageDiv.innerHTML = `<div class="message-bubble">${formattedMessage}</div>`;
+        messagesContainer.appendChild(messageDiv);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      }
+
+      function showLoading(
+        show,
+        message = "🤔 Sedang memroses pertanyaan Anda..."
+      ) {
+        const loading = document.getElementById("loadingIndicator");
+        loading.innerHTML = `<div>${message}</div>`;
+        loading.classList.toggle("show", show);
+      }
+
+      function updateMapForQuery(query) {
+        const lowerQuery = query.toLowerCase();
+
+        if (lowerQuery.includes("banjir")) {
+          showMapData("banjir");
+        } else if (lowerQuery.includes("kekeringan")) {
+          showMapData("kekeringan");
+        } else if (
+          lowerQuery.includes("pdam") ||
+          lowerQuery.includes("perusahaan air")
+        ) {
+          showMapData("air");
+        } else if (lowerQuery.includes("sanitasi")) {
+          showMapData("sanitasi");
+        }
+
+        // Fokus ke provinsi yang disebutkan
+        const mentionedProvince = Object.keys(provinsiData).find((provinsi) =>
+          lowerQuery.includes(provinsi.toLowerCase())
+        );
+
+        if (mentionedProvince) {
+          highlightProvince(mentionedProvince);
+        }
+      }
+
+      function askQuickQuestion(question) {
+        document.getElementById("messageInput").value = question;
+        sendMessage();
+      }
+
+      function handleKeyPress(event) {
+        if (event.key === "Enter") {
+          sendMessage();
+        }
+      }
+
+      // Inisialisasi peta saat halaman dimuat
+      window.onload = function () {
+        initMap();
+      };
+    </script>
+  </body>
+</html>

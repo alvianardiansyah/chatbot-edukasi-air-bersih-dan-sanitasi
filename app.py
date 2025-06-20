@@ -3,6 +3,7 @@ from transformers import T5ForConditionalGeneration, T5Tokenizer
 import torch
 import os
 import time
+from functools import lru_cache
 
 app = Flask(__name__)
 
@@ -11,6 +12,7 @@ MODEL_LOADED = False
 tokenizer = None
 model = None
 
+@lru_cache(maxsize=1)
 def load_model():
     global MODEL_LOADED, tokenizer, model
     
@@ -32,6 +34,14 @@ def load_model():
     except Exception as e:
         print(f"Gagal memuat model: {str(e)}")
         MODEL_LOADED = False
+
+# Health check endpoint untuk Railway
+@app.route('/health')
+def health_check():
+    return jsonify({
+        'status': 'healthy',
+        'model_loaded': MODEL_LOADED
+    }), 200
 
 # Route untuk halaman utama
 @app.route('/')
@@ -89,8 +99,17 @@ def chat():
             'processing_time': 0
         }), 500
 
+# Lazy loading untuk Railway
+def initialize_model():
+    if not MODEL_LOADED:
+        load_model()
+
 # Jalankan aplikasi
 if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 5000))
     print("Menyiapkan aplikasi...")
-    load_model()
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    initialize_model()
+    app.run(debug=False, host='0.0.0.0', port=port)
+
+# Untuk gunicorn (Railway production)
+initialize_model()

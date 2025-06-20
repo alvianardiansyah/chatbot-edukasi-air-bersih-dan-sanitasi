@@ -13,20 +13,19 @@ tokenizer = None
 model = None
 
 @lru_cache(maxsize=1)
+# Ganti bagian load_model() dengan:
 def load_model():
     global MODEL_LOADED, tokenizer, model
     
     try:
-        model_path = os.path.join('models', 'best_washinbot_t5_model')
+        # Load dari Hugging Face Hub
+        model_name = "script122/washinbot-t5"  # Ganti dengan nama repo Anda
         
-        if not os.path.exists(model_path):
-            raise FileNotFoundError(f"Model not found at {model_path}")
+        print("Memuat tokenizer dari Hugging Face...")
+        tokenizer = T5Tokenizer.from_pretrained(model_name)
         
-        print("Memuat tokenizer...")
-        tokenizer = T5Tokenizer.from_pretrained(model_path)
-        
-        print("Memuat model...")
-        model = T5ForConditionalGeneration.from_pretrained(model_path)
+        print("Memuat model dari Hugging Face...")
+        model = T5ForConditionalGeneration.from_pretrained(model_name)
         
         MODEL_LOADED = True
         print("Model berhasil dimuat!")
